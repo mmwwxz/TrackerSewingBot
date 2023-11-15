@@ -21,7 +21,6 @@ Session = sessionmaker(bind=engine)
 session = Session()
 
 
-# Определение модели для отчетов
 class Report(Base):
     __tablename__ = 'reports'
 
@@ -154,7 +153,7 @@ async def process_unit_price(message: types.Message, state: FSMContext):
     await FormReports.expenses.set()
 
 
-# --------- SEARCH IN REPORTS ---------
+# --------- SEARCH IN REPORTS FOR NAME ---------
 
 @dp.message_handler(Text(equals="Поиск", ignore_case=True))
 async def search_options(message: types.Message):
@@ -168,6 +167,11 @@ async def search_by_name(callback_query: types.CallbackQuery):
     await bot.send_message(callback_query.from_user.id, "Введите имя мастера для поиска:")
     await FormSearch.name_db.set()
 
+@dp.callback_query_handler(lambda c: c.data == "По названию модели")
+async def search_by_model(callback_query: types.CallbackQuery):
+    print("Получен запрос на поиск по названию модели")
+    await bot.send_message(callback_query.from_user.id, "Введите название модели для поиска:")
+    await FormSearch.model_db.set()
 
 @dp.message_handler(state=FormSearch.name_db)
 async def process_search_by_name(message: types.Message, state: FSMContext):
@@ -178,33 +182,26 @@ async def process_search_by_name(message: types.Message, state: FSMContext):
         results = session.query(Report).filter(Report.name == master_name).all()
 
         for result in results:
-            await message.reply(f"Мастер: {result.name}, Модель: {result.model_name}, Количество: {result.remaining},"
-                                f" Принято: {result.income}")
+            await message.reply(f"Мастер: {result.name}, Модель: {result.model_name}, Количество: {result.remaining}, Принято: {result.income}")
 
     await state.finish()
 
-
-@dp.callback_query_handler(lambda c: c.data == "По названию модели")
-async def search_by_model(callback_query: types.CallbackQuery):
-    await bot.send_message(callback_query.from_user.id, "Введите название модели для поиска:")
-    await FormSearch.model_db.set()
-
-
+# --------- SEARCH IN REPORTS FOR MODEL NAME ---------
 @dp.message_handler(state=FormSearch.model_db)
 async def process_search_by_model(message: types.Message, state: FSMContext):
+    print("Получено сообщение для поиска по названию модели:", message.text)
     async with state.proxy() as data:
         model_name = message.text
 
         results = session.query(Report).filter(Report.model_name == model_name).all()
 
         for result in results:
-            await message.reply(f"Мастер: {result.name}, Модель: {result.model_name}, Количество: {result.remaining},"
-                                f" Принято: {result.income}")
+            await message.reply(f"Мастер: {result.name}, Модель: {result.model_name}, Количество: {result.remaining}, Принято: {result.income}")
 
     await state.finish()
 
 
-# --------- РАСХОДЫ ---------
+# --------- SEARCH IN EXPENSES ---------
 
 
 @dp.message_handler(Text(equals="Расходы", ignore_case=True))
@@ -230,10 +227,22 @@ async def expenses_for_sewing(message: types.Message, state: FSMContext):
 
 
 @dp.message_handler(state=FormReports.expenses)
-async def process_result(message: types.Message, state: FSMContext):
+async def process_reports(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['expenses'] = int(message.text)
         data['result1'] = str(int(data['income']) * int(data['expenses']))  # Итого = income * expenses
+
+        new_report = Report(
+            name=data['name'],
+            model_name=data['model_name'],
+            remaining=data['remaining'],
+            income=data['income'],
+            expenses=data['expenses'],
+            result1=data['result1']
+        )
+        session.add(new_report)
+        session.commit()
+
         try:
             file_path = 'data/production.xlsx'
             if os.path.exists(file_path):
@@ -253,17 +262,6 @@ async def process_result(message: types.Message, state: FSMContext):
             row = (datetime.now().strftime("%d.%m.%Y"), model_name, name, income, remaining, expenses, result1)
             ws.append(row)
             wb.save(file_path)
-
-            new_report = Report(
-                name=data['name'],
-                model_name=data['model_name'],
-                remaining=data['remaining'],
-                income=data['income'],
-                expenses=data['expenses'],
-                result1=data['result1']
-            )
-            session.add(new_report)
-            session.commit()
 
             with open(file_path, 'rb') as f:
                 await bot.send_document(message.chat.id, f)
