@@ -4,36 +4,42 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text
-from aiogram.dispatcher.filters.state import State, StatesGroup
-from aiogram.types import ParseMode, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.utils import executor
-from configparser import ConfigParser
 from openpyxl import load_workbook
 from datetime import datetime
 from dotenv import load_dotenv
-import sqlite3
-
 from handlers import markups as nav
+from aiogram.dispatcher.filters.state import StatesGroup, State
+from sqlalchemy import create_engine, Column, Integer, String, DateTime
+from sqlalchemy.sql import func
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 
-# import sqlite3
-#
-# conn = sqlite3.connect('data/reports.db')
-# cursor = conn.cursor()
-#
-# cursor.execute('''
-#     CREATE TABLE IF NOT EXISTS reports (
-#         id INTEGER PRIMARY KEY AUTOINCREMENT,
-#         date DATETIME NOT NULL DEFAULT (DATETIME('now')),
-#         name STRING UNIQUE NOT NULL,
-#         model_name STRING NOT NULL,
-#         remaining INTEGER NOT NULL,
-#         income INTEGER NOT NULL,
-#         expenses INTEGER NOT NULL,
-#         result1 INTEGER NOT NULL
-#     )
-# ''')
-#
-# conn.commit()
+engine = create_engine('sqlite:///mydatabase.db', echo=True)
+Base = declarative_base()
+Session = sessionmaker(bind=engine)
+session = Session()
+
+
+# Определение модели для отчетов
+class Report(Base):
+    __tablename__ = 'reports'
+
+    id = Column(Integer, primary_key=True)
+    date = Column(DateTime(timezone=True), server_default=func.now())
+    name = Column(String)
+    model_name = Column(String)
+    remaining = Column(Integer)
+    income = Column(Integer)
+    expenses = Column(Integer)
+    result1 = Column(Integer)
+
+
+Base.metadata.create_all(engine)
+
+
+Base = declarative_base()
+
 
 logging.basicConfig(level=logging.INFO)
 
@@ -41,6 +47,10 @@ load_dotenv()
 bot = Bot(os.getenv('TOKEN'))
 storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
+engine = create_engine('sqlite:///mydatabase.db', echo=True)
+Base = declarative_base()
+Session = sessionmaker(bind=engine)
+session = Session()
 
 
 class FormReports(StatesGroup):
@@ -59,6 +69,37 @@ class FormExpenses(StatesGroup):
     result2 = State()  # Итого
 
 
+class FormSearch(StatesGroup):
+    name_db = State()
+    model_db = State()
+
+
+# Определение модели для отчетов
+# class Report(Base):
+#     __tablename__ = 'reports'
+#
+#     id = Column(Integer, primary_key=True)
+#     date = Column(DateTime(timezone=True), server_default=func.now())
+#     name = Column(String)
+#     model_name = Column(String)
+#     remaining = Column(Integer)
+#     income = Column(Integer)
+#     expenses = Column(Integer)
+#     result1 = Column(Integer)
+
+
+# Определение модели для расходов
+class Expenses(Base):
+    __tablename__ = 'expenses'
+
+    id = Column(Integer, primary_key=True)
+    date = Column(DateTime(timezone=True), server_default=func.now())
+    textile = Column(Integer)
+    accessories = Column(Integer)
+    sewing = Column(Integer)
+    result2 = Column(Integer)
+
+
 @dp.message_handler(commands='start')
 async def cmd_start(message: types.Message):
     await message.reply("Привет! Я бот для учета производства. Нажмите кнопку \"Начать\", чтобы начать работу.",
@@ -74,7 +115,7 @@ if not os.path.exists('data/production.xlsx'):
 if not os.path.exists('data/consumption.xlsx'):
     open('data/consumption.xlsx', 'w').close()
 
-
+# --------- REPORTS ---------
 @dp.message_handler(Text(equals="Отчет", ignore_case=True))
 async def process_name(message: types.Message):
     await message.reply("Введите ФИО мастера:")
@@ -112,7 +153,58 @@ async def process_unit_price(message: types.Message, state: FSMContext):
     await message.reply("Введите цену за единицу:")
     await FormReports.expenses.set()
 
-# --- Расходы ---
+
+# --------- SEARCH IN REPORTS ---------
+
+@dp.message_handler(Text(equals="Поиск", ignore_case=True))
+async def search_options(message: types.Message):
+    print("Получено сообщение 'Поиск'")
+    await message.reply("Выберите опцию поиска:", reply_markup=nav.filtrationMenu)
+
+
+@dp.callback_query_handler(lambda c: c.data == "По имени")
+async def search_by_name(callback_query: types.CallbackQuery):
+    print("Получен запрос на поиск по имени")
+    await bot.send_message(callback_query.from_user.id, "Введите имя мастера для поиска:")
+    await FormSearch.name_db.set()
+
+
+@dp.message_handler(state=FormSearch.name_db)
+async def process_search_by_name(message: types.Message, state: FSMContext):
+    print("Получено сообщение для поиска по имени:", message.text)
+    async with state.proxy() as data:
+        master_name = message.text
+
+        results = session.query(Report).filter(Report.name == master_name).all()
+
+        for result in results:
+            await message.reply(f"Мастер: {result.name}, Модель: {result.model_name}, Количество: {result.remaining},"
+                                f" Принято: {result.income}")
+
+    await state.finish()
+
+
+@dp.callback_query_handler(lambda c: c.data == "По названию модели")
+async def search_by_model(callback_query: types.CallbackQuery):
+    await bot.send_message(callback_query.from_user.id, "Введите название модели для поиска:")
+    await FormSearch.model_db.set()
+
+
+@dp.message_handler(state=FormSearch.model_db)
+async def process_search_by_model(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        model_name = message.text
+
+        results = session.query(Report).filter(Report.model_name == model_name).all()
+
+        for result in results:
+            await message.reply(f"Мастер: {result.name}, Модель: {result.model_name}, Количество: {result.remaining},"
+                                f" Принято: {result.income}")
+
+    await state.finish()
+
+
+# --------- РАСХОДЫ ---------
 
 
 @dp.message_handler(Text(equals="Расходы", ignore_case=True))
@@ -162,6 +254,17 @@ async def process_result(message: types.Message, state: FSMContext):
             ws.append(row)
             wb.save(file_path)
 
+            new_report = Report(
+                name=data['name'],
+                model_name=data['model_name'],
+                remaining=data['remaining'],
+                income=data['income'],
+                expenses=data['expenses'],
+                result1=data['result1']
+            )
+            session.add(new_report)
+            session.commit()
+
             with open(file_path, 'rb') as f:
                 await bot.send_document(message.chat.id, f)
         except Exception as e:
@@ -191,6 +294,15 @@ async def process_expenses(message: types.Message, state: FSMContext):
             row = (datetime.now().strftime("%d.%m.%Y"), textile, accessories, sewing, result2)
             ws.append(row)
             wb.save(file_path)
+
+            new_expenses = Expenses(
+                textile=data['textile'],
+                accessories=data['accessories'],
+                sewing=data['sewing'],
+                result2=data['result2']
+            )
+            session.add(new_expenses)
+            session.commit()
 
             with open(file_path, 'rb') as f:
                 await bot.send_document(message.chat.id, f)
