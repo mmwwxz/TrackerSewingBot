@@ -7,8 +7,8 @@ consumption_btn = KeyboardButton('Расходы')
 filtration_btn = KeyboardButton('Поиск')
 
 # --- Filtration menu ---
-name_filtration_btn = InlineKeyboardButton('По имени')
-model_name_filtration_btn = InlineKeyboardButton('По названию модели')
+name_filtration_btn = KeyboardButton('По имени')
+model_name_filtration_btn = KeyboardButton('По названию модели')
 
 # --- Other menu ---
 help_btn = KeyboardButton('Отправить баг')
