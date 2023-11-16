@@ -166,11 +166,11 @@ async def process_reports(message: types.Message, state: FSMContext):
         nav2.session.commit()
 
         try:
-            file_path = 'data/production.xlsx'
-            if os.path.exists(file_path):
-                wb = load_workbook(file_path)
+            file_path_reports = 'data/production.xlsx'
+            if os.path.exists(file_path_reports):
+                wb = load_workbook(file_path_reports)
             else:
-                wb = load_workbook()
+                wb = load_workbook(file_path_reports)
                 ws = wb.active
                 ws.append(["Дата", "Название модели", "Мастер ФИО", "Количество", "Принял", "Цена", "Итого"])
 
@@ -183,9 +183,9 @@ async def process_reports(message: types.Message, state: FSMContext):
             name = str(data['name'])
             row = (datetime.now().strftime("%d.%m.%Y"), model_name, name, income, remaining, expenses, result_reports)
             ws.append(row)
-            wb.save(file_path)
+            wb.save(file_path_reports)
 
-            with open(file_path, 'rb') as f:
+            with open(file_path_reports, 'rb') as f:
                 await nav2.bot.send_document(message.chat.id, f)
         except Exception as e:
             logging.error(f"Error sending document: {e}")
@@ -202,11 +202,11 @@ async def process_expenses(message: types.Message, state: FSMContext):
         data['sewing'] = message.text
         data['result_expenses'] = str(int(data['textile']) + int(data['accessories']) + int(data['sewing']))
         try:
-            file_path = 'data/consumption.xlsx'
-            if os.path.exists(file_path):
-                wb = load_workbook(file_path)
+            file_path_expenses = 'data/consumption.xlsx'
+            if os.path.exists(file_path_expenses):
+                wb = load_workbook(file_path_expenses)
             else:
-                wb = load_workbook()
+                wb = load_workbook(file_path_expenses)
                 ws = wb.active
 
             textile = int(data['textile'])
@@ -215,7 +215,7 @@ async def process_expenses(message: types.Message, state: FSMContext):
             result_expenses = int(data['result_expenses'])
             row = (datetime.now().strftime("%d.%m.%Y"), textile, accessories, sewing, result_expenses)
             ws.append(row)
-            wb.save(file_path)
+            wb.save(file_path_expenses)
 
             new_expenses = nav2.Expenses(
                 textile=data['textile'],
@@ -226,7 +226,7 @@ async def process_expenses(message: types.Message, state: FSMContext):
             nav2.session.add(new_expenses)
             nav2.session.commit()
 
-            with open(file_path, 'rb') as f:
+            with open(file_path_expenses, 'rb') as f:
                 await nav2.bot.send_document(message.chat.id, f)
         except Exception as e:
             logging.error(f"Error sending document: {e}")
