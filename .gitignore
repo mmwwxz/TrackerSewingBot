@@ -29,7 +29,7 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
-mydatabase.db
+ydatabase.db
 data
 
 # PyInstaller

@@ -1,24 +1,23 @@
-import logging
-import os
-from aiogram import Bot, Dispatcher
-from aiogram.contrib.fsm_storage.memory import MemoryStorage
-from dotenv import load_dotenv
 from aiogram.dispatcher.filters.state import StatesGroup, State
 from sqlalchemy import create_engine, Column, Integer, String, DateTime
 from sqlalchemy.sql import func
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from aiogram.contrib.fsm_storage.memory import MemoryStorage
+from dotenv import load_dotenv
+import logging
+import os
+from aiogram import Dispatcher, Bot
 
+engine = create_engine('sqlite:///mydatabase.db', echo=True)
+Base = declarative_base()
+
+# ---- BOT TOKEN ----
 logging.basicConfig(level=logging.INFO)
 load_dotenv()
 bot = Bot(os.getenv('TOKEN'))
 storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
-engine = create_engine('sqlite:///mydatabase.db', echo=True)
-Base = declarative_base()
-Base.metadata.create_all(engine)
-Session = sessionmaker(bind=engine)
-session = Session()
 
 
 class FormReports(StatesGroup):
@@ -31,10 +30,10 @@ class FormReports(StatesGroup):
 
 
 class FormExpenses(StatesGroup):
-    textile = State()  # Ткань
-    accessories = State()  # Фурнитура
-    sewing = State()  # Пошив за ед.
-    result_expenses = State()  # Итого
+    textile = State()
+    accessories = State()
+    sewing = State()
+    result_expenses = State()
 
 
 class FormSearch(StatesGroup):
@@ -52,10 +51,9 @@ class Report(Base):
     remaining = Column(Integer)
     income = Column(Integer)
     expenses = Column(Integer)
-    result1 = Column(Integer)
+    result_reports = Column(Integer)
 
 
-# Определение модели для расходов
 class Expenses(Base):
     __tablename__ = 'expenses'
 
@@ -64,4 +62,12 @@ class Expenses(Base):
     textile = Column(Integer)
     accessories = Column(Integer)
     sewing = Column(Integer)
-    result2 = Column(Integer)
+    result_expenses = Column(Integer)
+
+
+# Создаем таблицы в нужном порядке
+Base.metadata.create_all(engine, tables=[Report.__table__])
+Base.metadata.create_all(engine, tables=[Expenses.__table__])
+
+Session = sessionmaker(bind=engine)
+session = Session()
