@@ -21,22 +21,7 @@ Session = sessionmaker(bind=engine)
 session = Session()
 
 
-class Report(Base):
-    __tablename__ = 'reports'
-
-    id = Column(Integer, primary_key=True)
-    date = Column(DateTime(timezone=True), server_default=func.now())
-    name = Column(String)
-    model_name = Column(String)
-    remaining = Column(Integer)
-    income = Column(Integer)
-    expenses = Column(Integer)
-    result1 = Column(Integer)
-
-
 Base.metadata.create_all(engine)
-
-
 Base = declarative_base()
 
 
@@ -74,17 +59,17 @@ class FormSearch(StatesGroup):
 
 
 # Определение модели для отчетов
-# class Report(Base):
-#     __tablename__ = 'reports'
-#
-#     id = Column(Integer, primary_key=True)
-#     date = Column(DateTime(timezone=True), server_default=func.now())
-#     name = Column(String)
-#     model_name = Column(String)
-#     remaining = Column(Integer)
-#     income = Column(Integer)
-#     expenses = Column(Integer)
-#     result1 = Column(Integer)
+class Report(Base):
+    __tablename__ = 'reports'
+
+    id = Column(Integer, primary_key=True)
+    date = Column(DateTime(timezone=True), server_default=func.now())
+    name = Column(String)
+    model_name = Column(String)
+    remaining = Column(Integer)
+    income = Column(Integer)
+    expenses = Column(Integer)
+    result1 = Column(Integer)
 
 
 # Определение модели для расходов
@@ -114,7 +99,9 @@ if not os.path.exists('data/production.xlsx'):
 if not os.path.exists('data/consumption.xlsx'):
     open('data/consumption.xlsx', 'w').close()
 
+
 # --------- REPORTS ---------
+
 @dp.message_handler(Text(equals="Отчет", ignore_case=True))
 async def process_name(message: types.Message):
     await message.reply("Введите ФИО мастера:")
@@ -153,7 +140,7 @@ async def process_unit_price(message: types.Message, state: FSMContext):
     await FormReports.expenses.set()
 
 
-# --------- SEARCH IN REPORTS FOR NAME ---------
+# --------- SEARCH IN REPORTS BY NAME ---------
 
 @dp.message_handler(Text(equals="Поиск", ignore_case=True))
 async def search_options(message: types.Message):
@@ -166,12 +153,15 @@ async def search_by_name(callback_query: types.CallbackQuery):
     print("Получен запрос на поиск по имени")
     await bot.send_message(callback_query.from_user.id, "Введите имя мастера для поиска:")
     await FormSearch.name_db.set()
+    print("Текущее состояние:", dp.current_state().state)
+
 
 @dp.callback_query_handler(lambda c: c.data == "По названию модели")
 async def search_by_model(callback_query: types.CallbackQuery):
     print("Получен запрос на поиск по названию модели")
     await bot.send_message(callback_query.from_user.id, "Введите название модели для поиска:")
     await FormSearch.model_db.set()
+
 
 @dp.message_handler(state=FormSearch.name_db)
 async def process_search_by_name(message: types.Message, state: FSMContext):
@@ -182,11 +172,14 @@ async def process_search_by_name(message: types.Message, state: FSMContext):
         results = session.query(Report).filter(Report.name == master_name).all()
 
         for result in results:
-            await message.reply(f"Мастер: {result.name}, Модель: {result.model_name}, Количество: {result.remaining}, Принято: {result.income}")
+            await message.reply(f"Мастер: {result.name}, Модель: {result.model_name}, Количество: {result.remaining}"
+                                f", Принято: {result.income}, Итог: {result.result1}")
 
     await state.finish()
 
-# --------- SEARCH IN REPORTS FOR MODEL NAME ---------
+
+# --------- SEARCH IN REPORTS BY MODEL NAME ---------
+
 @dp.message_handler(state=FormSearch.model_db)
 async def process_search_by_model(message: types.Message, state: FSMContext):
     print("Получено сообщение для поиска по названию модели:", message.text)
@@ -196,13 +189,13 @@ async def process_search_by_model(message: types.Message, state: FSMContext):
         results = session.query(Report).filter(Report.model_name == model_name).all()
 
         for result in results:
-            await message.reply(f"Мастер: {result.name}, Модель: {result.model_name}, Количество: {result.remaining}, Принято: {result.income}")
+            await message.reply(f"Мастер: {result.name}, Модель: {result.model_name}, Количество: {result.remaining}"
+                                f", Принято: {result.income}, Итог: {result.result1}")
 
     await state.finish()
 
 
-# --------- SEARCH IN EXPENSES ---------
-
+# --------- EXPENSES ---------
 
 @dp.message_handler(Text(equals="Расходы", ignore_case=True))
 async def cmd_calc(message: types.Message):
@@ -211,7 +204,7 @@ async def cmd_calc(message: types.Message):
 
 
 @dp.message_handler(state=FormExpenses.textile)
-async def expenses_for_accessories(message: types.Message, state: FSMContext):
+async def expenses_by_accessories(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['textile'] = message.text
     await message.reply("Введите расходы за фурнитуру:")
@@ -219,12 +212,14 @@ async def expenses_for_accessories(message: types.Message, state: FSMContext):
 
 
 @dp.message_handler(state=FormExpenses.accessories)
-async def expenses_for_sewing(message: types.Message, state: FSMContext):
+async def expenses_by_sewing(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['accessories'] = message.text
     await message.reply("Введите расходы на пошив за единицу:")
     await FormExpenses.sewing.set()
 
+
+# --------- SEND REPORTS FILE ---------
 
 @dp.message_handler(state=FormReports.expenses)
 async def process_reports(message: types.Message, state: FSMContext):
@@ -271,6 +266,8 @@ async def process_reports(message: types.Message, state: FSMContext):
 
     await state.finish()
 
+
+# --------- SEND EXPENSES FILE ---------
 
 @dp.message_handler(state=FormExpenses.sewing)
 async def process_expenses(message: types.Message, state: FSMContext):
