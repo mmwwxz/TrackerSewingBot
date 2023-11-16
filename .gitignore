@@ -29,9 +29,14 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+<<<<<<< HEAD
 mydatabase.db
 data/consumption.xlsx
 data/production.xlsx
+=======
+ydatabase.db
+data
+>>>>>>> fix
 
 # PyInstaller
 #  Usually these files are written by a python script from a template

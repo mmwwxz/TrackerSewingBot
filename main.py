@@ -2,12 +2,16 @@ import logging
 import os
 from aiogram import types
 from aiogram.dispatcher import FSMContext
-from aiogram.dispatcher.filters import Text
+from aiogram.dispatcher.filters import Text, Command
 from aiogram.utils import executor
 from openpyxl import load_workbook
 from datetime import datetime
+
 from handlers import markups as nav
-from config import class_for_main as nav2
+from config import class_for_main1 as nav2
+
+
+admin_id = [1238343405]
 
 if not os.path.exists('data'):
     os.makedirs('data', exist_ok=True)
@@ -18,8 +22,14 @@ if not os.path.exists('data/production.xlsx'):
 if not os.path.exists('data/consumption.xlsx'):
     open('data/consumption.xlsx', 'w').close()
 
+dp = nav2.dp
 
-@nav2.dp.message_handler(commands='start')
+
+async def is_admin_user(message: types.Message):
+    return message.from_user.id in admin_id
+
+
+@dp.message_handler(Command("start"), is_admin_user)
 async def cmd_start(message: types.Message):
     await message.reply("Привет! Я бот для учета производства. Нажмите кнопку \"Начать\", чтобы начать работу.",
                         reply_markup=nav.mainMenu)
@@ -27,13 +37,13 @@ async def cmd_start(message: types.Message):
 
 # --------- REPORTS ---------
 
-@nav2.dp.message_handler(Text(equals="Отчет", ignore_case=True))
+@dp.message_handler(Text(equals="Отчет", ignore_case=True))
 async def process_name(message: types.Message):
     await message.reply("Введите ФИО мастера:")
     await nav2.FormReports.name.set()
 
 
-@nav2.dp.message_handler(state=nav2.FormReports.name)
+@dp.message_handler(state=nav2.FormReports.name)
 async def process_model_name(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['name'] = message.text
@@ -41,7 +51,7 @@ async def process_model_name(message: types.Message, state: FSMContext):
     await nav2.FormReports.model_name.set()
 
 
-@nav2.dp.message_handler(state=nav2.FormReports.model_name)
+@dp.message_handler(state=nav2.FormReports.model_name)
 async def process_model_name(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['model_name'] = message.text
@@ -49,7 +59,7 @@ async def process_model_name(message: types.Message, state: FSMContext):
     await nav2.FormReports.remaining.set()
 
 
-@nav2.dp.message_handler(state=nav2.FormReports.remaining)
+@dp.message_handler(state=nav2.FormReports.remaining)
 async def process_remaining(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['remaining'] = message.text
@@ -57,7 +67,7 @@ async def process_remaining(message: types.Message, state: FSMContext):
     await nav2.FormReports.income.set()
 
 
-@nav2.dp.message_handler(state=nav2.FormReports.income)
+@dp.message_handler(state=nav2.FormReports.income)
 async def process_unit_price(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['income'] = message.text
@@ -67,13 +77,13 @@ async def process_unit_price(message: types.Message, state: FSMContext):
 
 # --------- SEARCH IN REPORTS BY NAME ---------
 
-@nav2.dp.message_handler(Text(equals="Поиск", ignore_case=True))
+@dp.message_handler(Text(equals="Поиск", ignore_case=True))
 async def search_options(message: types.Message):
     print("Получено сообщение 'Поиск'")
     await message.reply("Выберите опцию поиска:", reply_markup=nav.filtrationMenu)
 
 
-@nav2.dp.callback_query_handler(lambda c: c.data == "По имени")
+@dp.callback_query_handler(lambda c: c.data == "По имени")
 async def search_by_name(callback_query: types.CallbackQuery):
     print("Получен запрос на поиск по имени")
     await nav2.bot.send_message(callback_query.from_user.id, "Введите имя мастера для поиска:")
@@ -83,7 +93,7 @@ async def search_by_name(callback_query: types.CallbackQuery):
     await nav2.FormSearch.name_db.set()
 
 
-@nav2.dp.message_handler(state=nav2.FormSearch.name_db)
+@dp.message_handler(state=nav2.FormSearch.name_db)
 async def process_search_by_name(message: types.Message, state: FSMContext):
     print("Получено сообщение для поиска по имени:", message.text)
     async with state.proxy() as data:
@@ -93,21 +103,21 @@ async def process_search_by_name(message: types.Message, state: FSMContext):
 
         for result in results:
             await message.reply(f"Мастер: {result.name}, Модель: {result.model_name}, Количество: {result.remaining}"
-                                f", Принято: {result.income}, Итог: {result.result1}")
+                                f", Принято: {result.income}, Итог: {result.result_reports}")
 
     await state.finish()
 
 
 # --------- SEARCH IN REPORTS BY MODEL NAME ---------
 
-@nav2.dp.callback_query_handler(lambda c: c.data == "По названию модели")
+@dp.callback_query_handler(lambda c: c.data == "По названию модели")
 async def search_by_model(callback_query: types.CallbackQuery):
     print("Получен запрос на поиск по названию модели")
     await nav2.bot.send_message(callback_query.from_user.id, "Введите название модели для поиска:")
     await nav2.FormSearch.model_db.set()
 
 
-@nav2.dp.message_handler(state=nav2.FormSearch.model_db)
+@dp.message_handler(state=nav2.FormSearch.model_db)
 async def process_search_by_model(message: types.Message, state: FSMContext):
     print("Получено сообщение для поиска по названию модели:", message.text)
     async with state.proxy() as data:
@@ -117,20 +127,20 @@ async def process_search_by_model(message: types.Message, state: FSMContext):
 
         for result in results:
             await message.reply(f"Мастер: {result.name}, Модель: {result.model_name}, Количество: {result.remaining}"
-                                f", Принято: {result.income}, Итог: {result.result1}")
+                                f", Принято: {result.income}, Итог: {result.model_db}")
 
     await state.finish()
 
 
 # --------- EXPENSES ---------
 
-@nav2.dp.message_handler(Text(equals="Расходы", ignore_case=True))
+@dp.message_handler(Text(equals="Расходы", ignore_case=True))
 async def cmd_calc(message: types.Message):
     await message.reply("Введите расход за ткань:")
     await nav2.FormExpenses.textile.set()
 
 
-@nav2.dp.message_handler(state=nav2.FormExpenses.textile)
+@dp.message_handler(state=nav2.FormExpenses.textile)
 async def expenses_by_accessories(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['textile'] = message.text
@@ -138,7 +148,7 @@ async def expenses_by_accessories(message: types.Message, state: FSMContext):
     await nav2.FormExpenses.accessories.set()
 
 
-@nav2.dp.message_handler(state=nav2.FormExpenses.accessories)
+@dp.message_handler(state=nav2.FormExpenses.accessories)
 async def expenses_by_sewing(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['accessories'] = message.text
@@ -148,7 +158,7 @@ async def expenses_by_sewing(message: types.Message, state: FSMContext):
 
 # --------- SEND REPORTS FILE ---------
 
-@nav2.dp.message_handler(state=nav2.FormReports.expenses)
+@dp.message_handler(state=nav2.FormReports.expenses)
 async def process_reports(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['expenses'] = int(message.text)
@@ -196,7 +206,7 @@ async def process_reports(message: types.Message, state: FSMContext):
 
 # --------- SEND EXPENSES FILE ---------
 
-@nav2.dp.message_handler(state=nav2.FormExpenses.sewing)
+@dp.message_handler(state=nav2.FormExpenses.sewing)
 async def process_expenses(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['sewing'] = message.text
