@@ -12,8 +12,10 @@ from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardBut
 from handlers import markups as nav
 from config import class_for_main1 as nav2
 
+
 # ---- ADMIN ID ----
-admin_id = [1238343405]
+
+admin_tg_id = [1238343405, 5459503530]
 
 
 if not os.path.exists('data'):
@@ -25,13 +27,14 @@ if not os.path.exists('data/production.xlsx'):
 if not os.path.exists('data/consumption.xlsx'):
     open('data/consumption.xlsx', 'w').close()
 
+
 dp = nav2.dp
 
 logging.basicConfig(level=logging.INFO)
 
 
 async def is_admin_user(message: types.Message):
-    return message.from_user.id in admin_id
+    return message.from_user.id in admin_tg_id
 
 
 @dp.message_handler(Command("start"), is_admin_user)
@@ -40,7 +43,7 @@ async def cmd_start(message: types.Message):
                         reply_markup=nav.mainMenu)
 
 
-# --------- BUG REPORT ---------
+# --------- SEND BUG REPORT ---------
 
 @dp.message_handler(Text(equals="Отправить баг", ignore_case=True))
 async def bug_report_command(message: types.Message):
@@ -229,6 +232,7 @@ async def process_search_by_name(message: types.Message, state: FSMContext):
 
 
 # --------- SEARCH IN REPORTS BY MODEL NAME ---------
+
 @dp.message_handler(state=nav2.FormSearch.model_db)
 async def process_search_by_model(message: types.Message, state: FSMContext):
     logging.info("Received message for model name search: %s", message.text)
@@ -261,7 +265,6 @@ async def process_search_by_model(message: types.Message, state: FSMContext):
             with open(file_path, 'rb') as file:
                 caption = f"Результаты поиска по модели '{model_name}'"
                 await message.answer_document(file, caption=caption)
-
         except Exception as e:
             logging.error("Error querying the database: %s", str(e))
             await message.reply("Произошла ошибка при выполнении запроса к базе данных.")
@@ -300,6 +303,16 @@ async def process_expenses(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         data['sewing'] = message.text
         data['result_expenses'] = str(int(data['textile']) + int(data['accessories']) + int(data['sewing']))
+
+        new_expenses = nav2.Expenses(
+            textile=data['textile'],
+            accessories=data['accessories'],
+            sewing=data['sewing'],
+            result_expenses=data['result_expenses']
+        )
+        nav2.session.add(new_expenses)
+        nav2.session.commit()
+
         try:
             file_path_expenses = 'data/consumption.xlsx'
             if os.path.exists(file_path_expenses):
@@ -307,7 +320,9 @@ async def process_expenses(message: types.Message, state: FSMContext):
             else:
                 wb = load_workbook(file_path_expenses)
                 ws = wb.active
+                ws.append(['Дата', 'Закуп ткани', 'Фурнитура', 'Пошив за ед.', 'Итого'])
 
+            ws = wb.active
             textile = int(data['textile'])
             accessories = int(data['accessories'])
             sewing = int(data['sewing'])
@@ -315,15 +330,6 @@ async def process_expenses(message: types.Message, state: FSMContext):
             row = (datetime.now().strftime("%d.%m.%Y"), textile, accessories, sewing, result_expenses)
             ws.append(row)
             wb.save(file_path_expenses)
-
-            new_expenses = nav2.Expenses(
-                textile=data['textile'],
-                accessories=data['accessories'],
-                sewing=data['sewing'],
-                result_expenses=data['result_expenses']
-            )
-            nav2.session.add(new_expenses)
-            nav2.session.commit()
 
             with open(file_path_expenses, 'rb') as f:
                 await nav2.bot.send_document(message.chat.id, f)
