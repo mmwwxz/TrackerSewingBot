@@ -6,13 +6,15 @@ from aiogram.dispatcher.filters import Text, Command
 from aiogram.utils import executor
 from openpyxl import Workbook, load_workbook
 from datetime import datetime
+from sqlalchemy import func
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 
 from handlers import markups as nav
 from config import class_for_main1 as nav2
 
-
+# ---- ADMIN ID ----
 admin_id = [1238343405]
+
 
 if not os.path.exists('data'):
     os.makedirs('data', exist_ok=True)
@@ -161,17 +163,17 @@ async def search_option_callback(callback_query: CallbackQuery):
 async def process_search_by_name(message: types.Message, state: FSMContext):
     logging.info("Received message for name search: %s", message.text)
     async with state.proxy() as data:
-        master_name = message.text
+        master_name = message.text.lower()
 
         try:
-            results = nav2.session.query(nav2.Report).filter(nav2.Report.name == master_name).all()
+            results = nav2.session.query(nav2.Report).filter(func.lower(nav2.Report.name) == master_name).all()
 
             if not results:
                 await message.reply(f"Нет результатов поиска для мастера '{master_name}'.")
                 return
 
-            # Загружаем существующую рабочую книгу или создаем новую, если она не существует
-            file_path = f"data/search_results_{master_name}.xlsx"
+            file_path = "data/search_results_name.xlsx"
+
             try:
                 workbook = load_workbook(file_path)
                 sheet = workbook.active
@@ -180,15 +182,12 @@ async def process_search_by_name(message: types.Message, state: FSMContext):
                 sheet = workbook.active
                 sheet.append(["Мастер", "Модель", "Количество", "Принято", "Итог"])
 
-            # Записываем результаты поиска в файл Excel
             for result in results:
                 sheet.append([result.name, result.model_name, result.remaining, result.income, result.result_reports])
 
-            # Сохраняем и закрываем файл
             workbook.save(file_path)
             workbook.close()
 
-            # Отправляем файл пользователю
             with open(file_path, 'rb') as file:
                 caption = f"Результаты поиска по мастеру '{master_name}'"
                 await message.answer_document(file, caption=caption)
@@ -205,17 +204,17 @@ async def process_search_by_name(message: types.Message, state: FSMContext):
 async def process_search_by_model(message: types.Message, state: FSMContext):
     logging.info("Received message for model name search: %s", message.text)
     async with state.proxy() as data:
-        model_name = message.text
+        model_name = message.text.lower()
 
         try:
-            results = nav2.session.query(nav2.Report).filter(nav2.Report.model_name == model_name).all()
+            results = nav2.session.query(nav2.Report).filter(func.lower(nav2.Report.model_name) == model_name).all()
 
             if not results:
                 await message.reply(f"Нет результатов поиска для модели '{model_name}'.")
                 return
 
-            # Загружаем существующую рабочую книгу или создаем новую, если она не существует
-            file_path = f"data/search_results_{model_name}.xlsx"
+            file_path = f"data/search_results_model.xlsx"
+
             try:
                 workbook = load_workbook(file_path)
                 sheet = workbook.active
@@ -224,15 +223,12 @@ async def process_search_by_model(message: types.Message, state: FSMContext):
                 sheet = workbook.active
                 sheet.append(["Мастер", "Модель", "Количество", "Принято", "Итог"])
 
-            # Записываем результаты поиска в файл Excel
             for result in results:
                 sheet.append([result.name, result.model_name, result.remaining, result.income, result.result_reports])
 
-            # Сохраняем и закрываем файл
             workbook.save(file_path)
             workbook.close()
 
-            # Отправляем файл пользователю
             with open(file_path, 'rb') as file:
                 caption = f"Результаты поиска по модели '{model_name}'"
                 await message.answer_document(file, caption=caption)
