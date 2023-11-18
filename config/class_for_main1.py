@@ -9,7 +9,7 @@ import logging
 import os
 from aiogram import Dispatcher, Bot
 
-engine = create_engine('sqlite:///mydatabase.db', echo=True)
+engine = create_engine('sqlite:///config/mdatabase.db', echo=True)
 Base = declarative_base()
 
 # ---- BOT TOKEN ----
