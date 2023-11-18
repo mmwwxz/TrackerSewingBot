@@ -1,6 +1,5 @@
 import logging
 import os
-# import io
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text, Command
@@ -77,6 +76,54 @@ async def process_unit_price(message: types.Message, state: FSMContext):
         data['income'] = message.text
     await message.reply("Введите цену за единицу:")
     await nav2.FormReports.expenses.set()
+
+
+# --------- SEND REPORTS FILE ---------
+
+@dp.message_handler(state=nav2.FormReports.expenses)
+async def process_reports(message: types.Message, state: FSMContext):
+    async with state.proxy() as data:
+        data['expenses'] = int(message.text)
+        data['result_reports'] = str(int(data['income']) * int(data['expenses']))  # Итого = income * expenses
+
+        new_report = nav2.Report(
+            name=data['name'],
+            model_name=data['model_name'],
+            remaining=data['remaining'],
+            income=data['income'],
+            expenses=data['expenses'],
+            result_reports=data['result_reports']
+        )
+        nav2.session.add(new_report)
+        nav2.session.commit()
+
+        try:
+            file_path_reports = 'data/production.xlsx'
+            if os.path.exists(file_path_reports):
+                wb = load_workbook(file_path_reports)
+            else:
+                wb = load_workbook(file_path_reports)
+                ws = wb.active
+                ws.append(["Дата", "Название модели", "Мастер ФИО", "Количество", "Принял", "Цена", "Итого"])
+
+            ws = wb.active
+            income = int(data['income'])
+            remaining = int(data['remaining'])
+            expenses = int(data['expenses'])
+            result_reports = int(data['result_reports'])
+            model_name = str(data['model_name'])
+            name = str(data['name'])
+            row = (datetime.now().strftime("%d.%m.%Y"), model_name, name, income, remaining, expenses, result_reports)
+            ws.append(row)
+            wb.save(file_path_reports)
+
+            with open(file_path_reports, 'rb') as f:
+                await nav2.bot.send_document(message.chat.id, f)
+        except Exception as e:
+            logging.error(f"Error sending document: {e}")
+            print(f"Error sending document: {e}")
+
+    await state.finish()
 
 
 # --------- SEARCH IN REPORTS BY NAME ---------
@@ -219,54 +266,6 @@ async def expenses_by_sewing(message: types.Message, state: FSMContext):
         data['accessories'] = message.text
     await message.reply("Введите расходы на пошив за единицу:")
     await nav2.FormExpenses.sewing.set()
-
-
-# --------- SEND REPORTS FILE ---------
-
-@dp.message_handler(state=nav2.FormReports.expenses)
-async def process_reports(message: types.Message, state: FSMContext):
-    async with state.proxy() as data:
-        data['expenses'] = int(message.text)
-        data['result_reports'] = str(int(data['income']) * int(data['expenses']))  # Итого = income * expenses
-
-        new_report = nav2.Report(
-            name=data['name'],
-            model_name=data['model_name'],
-            remaining=data['remaining'],
-            income=data['income'],
-            expenses=data['expenses'],
-            result_reports=data['result_reports']
-        )
-        nav2.session.add(new_report)
-        nav2.session.commit()
-
-        try:
-            file_path_reports = 'data/production.xlsx'
-            if os.path.exists(file_path_reports):
-                wb = load_workbook(file_path_reports)
-            else:
-                wb = load_workbook(file_path_reports)
-                ws = wb.active
-                ws.append(["Дата", "Название модели", "Мастер ФИО", "Количество", "Принял", "Цена", "Итого"])
-
-            ws = wb.active
-            income = int(data['income'])
-            remaining = int(data['remaining'])
-            expenses = int(data['expenses'])
-            result_reports = int(data['result_reports'])
-            model_name = str(data['model_name'])
-            name = str(data['name'])
-            row = (datetime.now().strftime("%d.%m.%Y"), model_name, name, income, remaining, expenses, result_reports)
-            ws.append(row)
-            wb.save(file_path_reports)
-
-            with open(file_path_reports, 'rb') as f:
-                await nav2.bot.send_document(message.chat.id, f)
-        except Exception as e:
-            logging.error(f"Error sending document: {e}")
-            print(f"Error sending document: {e}")
-
-    await state.finish()
 
 
 # --------- SEND EXPENSES FILE ---------
