@@ -8,9 +8,13 @@ from openpyxl import Workbook, load_workbook
 from datetime import datetime
 from sqlalchemy import func
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from rich.console import Console
 
 from handlers import markups as nav
 from config import class_for_main1 as nav2
+
+
+console = Console()
 
 
 # ---- ADMIN ID ----
@@ -70,6 +74,21 @@ async def process_bug_report(message: types.Message, state: FSMContext):
         await message.reply("Произошла ошибка при обработке баг-репорта. Попробуйте позже.")
 
     await state.finish()
+
+
+# --------- SUPPORT ---------
+@dp.message_handler(Text(equals="Техподдержка", ignore_case=True))
+async def support_report_command(message: types.Message):
+    await message.reply(
+        "🤖 <b>Швейный Учетный Бот - Техподдержка</b>\n\n"
+        "Если у Вас возникли вопросы, предложения или вам нужна помощь с использованием бота, "
+        "не стесняйтесь обращаться! Мы готовы ответить на все ваши запросы и обеспечить качественную поддержку.\n\n"
+        "📱 <b>Телеграм:</b> <b>@al1shka007</b>\n\n"
+        "Не забывайте указывать Ваши контактные данные и описывать проблему максимально подробно. "
+        "Мы стремимся сделать использование бота максимально удобным для Вас!\n\n"
+        "<b>Спасибо за выбор Швейного Учетного Бота!</b> 🚀",
+        parse_mode='HTML'
+    )
 
 
 # --------- REPORTS ---------
