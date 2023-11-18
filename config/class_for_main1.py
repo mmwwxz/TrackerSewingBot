@@ -20,6 +20,10 @@ storage = MemoryStorage()
 dp = Dispatcher(bot, storage=storage)
 
 
+class FormBugReport(StatesGroup):
+    text = State()
+
+
 class FormReports(StatesGroup):
     name = State()
     model_name = State()

@@ -40,6 +40,35 @@ async def cmd_start(message: types.Message):
                         reply_markup=nav.mainMenu)
 
 
+# --------- BUG REPORT ---------
+
+@dp.message_handler(Text(equals="Отправить баг", ignore_case=True))
+async def bug_report_command(message: types.Message):
+    await message.reply("Чтобы отправить баг-репорт, прикрепите скриншот или опишите проблему.")
+    await nav2.FormBugReport.text.set()
+
+
+@dp.message_handler(state=nav2.FormBugReport.text, content_types=types.ContentType.ANY)
+async def process_bug_report(message: types.Message, state: FSMContext):
+    user_id = message.from_user.id
+    chat_id = '-1002127891568'
+
+    try:
+        caption = f"Баг-репорт от пользователя {user_id}:\n\n{message.text}"
+        await nav2.bot.send_message(chat_id, caption)
+
+        if message.photo:
+            photo = message.photo[-1].file_id
+            await nav2.bot.send_photo(chat_id, photo, caption=caption)
+
+        await message.reply("Баг-репорт успешно отправлен. Спасибо!")
+    except Exception as e:
+        logging.error(f"Error processing bug report: {e}")
+        await message.reply("Произошла ошибка при обработке баг-репорта. Попробуйте позже.")
+
+    await state.finish()
+
+
 # --------- REPORTS ---------
 
 @dp.message_handler(Text(equals="Отчет", ignore_case=True))
