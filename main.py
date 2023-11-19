@@ -1,5 +1,5 @@
-import logging
 import os
+import logging
 from aiogram import types
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Text, Command
@@ -8,13 +8,9 @@ from openpyxl import Workbook, load_workbook
 from datetime import datetime
 from sqlalchemy import func
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
-from rich.console import Console
 
 from handlers import markups as nav
 from config import class_for_main1 as nav2
-
-
-console = Console()
 
 
 # ---- ADMIN ID ----
@@ -49,7 +45,7 @@ async def cmd_start(message: types.Message):
 
 # --------- SEND BUG REPORT ---------
 
-@dp.message_handler(Text(equals="Отправить баг", ignore_case=True))
+@dp.message_handler(Text(equals="Отправить баг 🐛", ignore_case=True))
 async def bug_report_command(message: types.Message):
     await message.reply("Чтобы отправить баг-репорт, прикрепите скриншот или опишите проблему.")
     await nav2.FormBugReport.text.set()
@@ -77,7 +73,8 @@ async def process_bug_report(message: types.Message, state: FSMContext):
 
 
 # --------- SUPPORT ---------
-@dp.message_handler(Text(equals="Техподдержка", ignore_case=True))
+
+@dp.message_handler(Text(equals="Техподдержка 🛠", ignore_case=True))
 async def support_report_command(message: types.Message):
     await message.reply(
         "🤖 <b>Швейный Учетный Бот - Техподдержка</b>\n\n"
@@ -93,7 +90,7 @@ async def support_report_command(message: types.Message):
 
 # --------- REPORTS ---------
 
-@dp.message_handler(Text(equals="Отчет", ignore_case=True))
+@dp.message_handler(Text(equals="Отчет 📊", ignore_case=True))
 async def process_name(message: types.Message):
     await message.reply("Введите ФИО мастера:")
     await nav2.FormReports.name.set()
@@ -181,12 +178,12 @@ async def process_reports(message: types.Message, state: FSMContext):
 
 # --------- SEARCH IN REPORTS BY NAME ---------
 
-@dp.message_handler(Text(equals="Поиск", ignore_case=True))
+@dp.message_handler(Text(equals="Поиск 🔍", ignore_case=True))
 async def search_options(message: types.Message):
     print("Получено сообщение 'Поиск'")
     keyboard = InlineKeyboardMarkup()
-    keyboard.add(InlineKeyboardButton("По имени", callback_data="search_by_name"))
-    keyboard.add(InlineKeyboardButton("По названию модели", callback_data="search_by_model"))
+    keyboard.add(InlineKeyboardButton("По имени 🕵️‍♂️", callback_data="search_by_name"))
+    keyboard.add(InlineKeyboardButton("По названию модели 📄", callback_data="search_by_model"))
 
     await message.reply("Выберите опцию поиска:", reply_markup=keyboard)
 
@@ -221,6 +218,7 @@ async def process_search_by_name(message: types.Message, state: FSMContext):
 
             if not results:
                 await message.reply(f"Нет результатов поиска для мастера '{master_name}'.")
+                await state.finish()
                 return
 
             file_path = "data/search_results_name.xlsx"
@@ -263,6 +261,7 @@ async def process_search_by_model(message: types.Message, state: FSMContext):
 
             if not results:
                 await message.reply(f"Нет результатов поиска для модели '{model_name}'.")
+                await state.finish()
                 return
 
             file_path = f"data/search_results_model.xlsx"
@@ -293,7 +292,7 @@ async def process_search_by_model(message: types.Message, state: FSMContext):
 
 # --------- EXPENSES ---------
 
-@dp.message_handler(Text(equals="Расходы", ignore_case=True))
+@dp.message_handler(Text(equals="Расходы 💸", ignore_case=True))
 async def cmd_calc(message: types.Message):
     await message.reply("Введите расход за ткань:")
     await nav2.FormExpenses.textile.set()
