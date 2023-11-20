@@ -15,17 +15,17 @@ from config import class_for_main1 as nav2
 
 # ---- ADMIN ID ----
 
-admin_tg_id = [1238343405, 5459503530]
+admin_tg_id = [1238343405, 5459503530, 1328407861]
 
 
-if not os.path.exists('data'):
-    os.makedirs('data', exist_ok=True)
-
-if not os.path.exists('data/production.xlsx'):
-    open('data/production.xlsx', 'w').close()
-
-if not os.path.exists('data/consumption.xlsx'):
-    open('data/consumption.xlsx', 'w').close()
+# if not os.path.exists('data'):
+#     os.makedirs('data', exist_ok=True)
+#
+# if not os.path.exists('data/production.xlsx'):
+#     open('data/production.xlsx', 'w').close()
+#
+# if not os.path.exists('data/consumption.xlsx'):
+#     open('data/consumption.xlsx', 'w').close()
 
 
 dp = nav2.dp
@@ -45,47 +45,47 @@ async def cmd_start(message: types.Message):
 
 # --------- SEND BUG REPORT ---------
 
-@dp.message_handler(Text(equals="Отправить баг 🐛", ignore_case=True))
-async def bug_report_command(message: types.Message):
-    await message.reply("Чтобы отправить баг-репорт, прикрепите скриншот или опишите проблему.")
-    await nav2.FormBugReport.text.set()
-
-
-@dp.message_handler(state=nav2.FormBugReport.text, content_types=types.ContentType.ANY)
-async def process_bug_report(message: types.Message, state: FSMContext):
-    user_id = message.from_user.id
-    chat_id = '-1002127891568'
-
-    try:
-        caption = f"Баг-репорт от пользователя {user_id}:\n\n{message.text}"
-        await nav2.bot.send_message(chat_id, caption)
-
-        if message.photo:
-            photo = message.photo[-1].file_id
-            await nav2.bot.send_photo(chat_id, photo, caption=caption)
-
-        await message.reply("Баг-репорт успешно отправлен. Спасибо!")
-    except Exception as e:
-        logging.error(f"Error processing bug report: {e}")
-        await message.reply("Произошла ошибка при обработке баг-репорта. Попробуйте позже.")
-
-    await state.finish()
+# @dp.message_handler(Text(equals="Отправить баг 🐛", ignore_case=True))
+# async def bug_report_command(message: types.Message):
+#     await message.reply("Чтобы отправить баг-репорт, прикрепите скриншот или опишите проблему.")
+#     await nav2.FormBugReport.text.set()
+#
+#
+# @dp.message_handler(state=nav2.FormBugReport.text, content_types=types.ContentType.ANY)
+# async def process_bug_report(message: types.Message, state: FSMContext):
+#     user_id = message.from_user.id
+#     chat_id = '-1002127891568'
+#
+#     try:
+#         caption = f"Баг-репорт от пользователя {user_id}:\n\n{message.text}"
+#         await nav2.bot.send_message(chat_id, caption)
+#
+#         if message.photo:
+#             photo = message.photo[-1].file_id
+#             await nav2.bot.send_photo(chat_id, photo, caption=caption)
+#
+#         await message.reply("Баг-репорт успешно отправлен. Спасибо!")
+#     except Exception as e:
+#         logging.error(f"Error processing bug report: {e}")
+#         await message.reply("Произошла ошибка при обработке баг-репорта. Попробуйте позже.")
+#
+#     await state.finish()
 
 
 # --------- SUPPORT ---------
 
-@dp.message_handler(Text(equals="Техподдержка 🛠", ignore_case=True))
-async def support_report_command(message: types.Message):
-    await message.reply(
-        "🤖 <b>Швейный Учетный Бот - Техподдержка</b>\n\n"
-        "Если у Вас возникли вопросы, предложения или вам нужна помощь с использованием бота, "
-        "не стесняйтесь обращаться! Мы готовы ответить на все ваши запросы и обеспечить качественную поддержку.\n\n"
-        "📱 <b>Телеграм:</b> <b>@al1shka007</b>\n\n"
-        "Не забывайте указывать Ваши контактные данные и описывать проблему максимально подробно. "
-        "Мы стремимся сделать использование бота максимально удобным для Вас!\n\n"
-        "<b>Спасибо за выбор Швейного Учетного Бота!</b> 🚀",
-        parse_mode='HTML'
-    )
+# @dp.message_handler(Text(equals="Техподдержка 🛠", ignore_case=True))
+# async def support_report_command(message: types.Message):
+#     await message.reply(
+#         "🤖 <b>Швейный Учетный Бот - Техподдержка</b>\n\n"
+#         "Если у Вас возникли вопросы, предложения или вам нужна помощь с использованием бота, "
+#         "не стесняйтесь обращаться! Мы готовы ответить на все ваши запросы и обеспечить качественную поддержку.\n\n"
+#         "📱 <b>Телеграм:</b> <b>@al1shka007</b>\n\n"
+#         "Не забывайте указывать Ваши контактные данные и описывать проблему максимально подробно. "
+#         "Мы стремимся сделать использование бота максимально удобным для Вас!\n\n"
+#         "<b>Спасибо за выбор Швейного Учетного Бота!</b> 🚀",
+#         parse_mode='HTML'
+#     )
 
 
 # --------- REPORTS ---------
@@ -237,7 +237,7 @@ async def process_search_by_name(message: types.Message, state: FSMContext):
             workbook.save(file_path)
             workbook.close()
 
-            with open(file_path, 'rb') as file:
+            with open(file_path, 'wb') as file:
                 caption = f"Результаты поиска по мастеру '{master_name}'"
                 await message.answer_document(file, caption=caption)
 
@@ -280,7 +280,7 @@ async def process_search_by_model(message: types.Message, state: FSMContext):
             workbook.save(file_path)
             workbook.close()
 
-            with open(file_path, 'rb') as file:
+            with open(file_path, 'w') as file:
                 caption = f"Результаты поиска по модели '{model_name}'"
                 await message.answer_document(file, caption=caption)
         except Exception as e:
