@@ -10,7 +10,7 @@ from sqlalchemy import func
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 
 from handlers import markups as nav
-from config import class_for_main1 as nav2
+from config import class_for_main as nav2
 
 
 # ---- ADMIN ID ----
